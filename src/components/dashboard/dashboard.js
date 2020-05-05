@@ -13,6 +13,7 @@ import TableRow from '@material-ui/core/TableRow';
 import { JwModal } from '../jwmodal';
 import Input from '@material-ui/core/Input';
 import Button from '@material-ui/core/Button';
+
 // import { Card, Button } from 'react-bootstrap';
 import {
     Redirect,
@@ -21,7 +22,7 @@ import {
 const columns = [
     { id: 'name', label: 'Name', Width: 100 },
     { id: 'id', label: 'Id', Width: 100 },
-    { id: 'applyingFor', label: "Applying For", Width: 100 },
+    { id: 'applicationId', label: "ApplicationId", Width: 100 },
 
 ];
 
@@ -37,13 +38,18 @@ const useStyles = makeStyles({
 
 
 
+
+
 function DashBoard(props) {
     const classes = useStyles();
-    const rows = TestJSON.members;
+    const rows = props.candidates
+    const application = props.application
+    const questionList = props.question
+
     const [page, setPage] = React.useState(0);
     const [rowsPerPage, setRowsPerPage] = React.useState(6);
     const [comment, setComment] = React.useState("")
-    const commentData = localStorage.getItem("apiJson")?JSON.parse(localStorage.getItem("apiJson")):{}
+    const commentData = localStorage.getItem("apiJson") ? JSON.parse(localStorage.getItem("apiJson")) : {}
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
@@ -56,31 +62,50 @@ function DashBoard(props) {
 
     //to save the comments in the state
     const saveComment = (e) => {
+
         setComment(e.target.value)
         console.log(e.target.value)
+
     }
 
     //save the comments into the localstorage apiJson file
-    const saveToFile = () => {
-        let key = props.userId
-        let arr = []
-        let obj = {}
-        if (Object.keys(commentData).length > 0 && commentData[key]) {
-            console.log("hiiiii")
-            arr = commentData[key]
-        }
-        arr.unshift(comment)
-        obj[key] = arr
-        localStorage.setItem('apiJson', JSON.stringify(obj))
+    const saveToFile = (index) => {
+        props.userVideoLink[index].comments = comment
+        fetch(`http://localhost:4000/applications/${props.userId}`, {
+            method: "PUT",
+            body: JSON.stringify({
+                id: props.userId,
+                videos: props.userVideoLink
+            }),
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+            },
+        })
+            .then(response => response.json())
+            .then(json => console.log(json))
         setComment("")
 
-    }
-//on clicking the users the modal will appear to get the video response
-    const openModal = (event, value) => {
+        // let key = props.userId
+        // let arr = []
+        // let obj = {}
+        // if (Object.keys(commentData).length > 0 && commentData[key]) {
+        //     console.log("hiiiii")
+        //     arr = commentData[key]
+        // }
+        // arr.unshift(comment)
+        // obj[key] = arr
+        // localStorage.setItem('apiJson', JSON.stringify(obj))
+        // setComment("")
 
-        props.dispatch({ type: "UserVideoLink", target: value.ApplicationLink })
-        props.dispatch({ type: "UserRelevantQuestions", target: value.question })
-        props.dispatch({ type: "UserId", target: value.id })
+    }
+    //on clicking the users the modal will appear to get the video response
+    const openModal = (event, value) => {
+        let videos = application.filter((row => row.id == value.applicationId))
+        console.log(videos)
+        props.dispatch({ type: "UserVideoLink", target: videos[0].videos })
+        // props.dispatch({ type: "UserRelevantQuestions", target: value.question })
+        props.dispatch({ type: "UserId", target: value.applicationId })
         JwModal.open('save')(event)
     }
 
@@ -143,30 +168,34 @@ function DashBoard(props) {
             <JwModal id="save" className="dialog">
                 <h4 className="heading" style={{ textAlign: "center" }}>User Activity Details</h4>
 
-                {props.userVideoLink ? <iframe style={{ width: "100%", height: "400px" }} src={props.userVideoLink}
-                    frameBorder='0'
-                    allow='autoplay; encrypted-media'
-                    allowFullScreen
-                    title='video'
-                /> : <p>No application response from the user</p>}
-                {props.userRelevantQuestions ? <p>{props.userRelevantQuestions}</p> : null}
-                {props.userVideoLink && 
-                <div><Input placeholder="Add public comment" value={comment} onChange={(e) => saveComment(e)} fullWidth inputProps={{ 'aria-label': 'description', 'width': "100%" }} />
+                {props.userVideoLink && props.userVideoLink.length > 0 ? props.userVideoLink.map((video, index) => <div><video width="570" controls>
+                    <source src={video.src} type="video/mp4"></source>
+                </video>
+                    <p>{questionList.filter((que) => que.id == video.questionId)[0].question}</p>
+                    <Input placeholder="Add public comment" value={comment} onChange={(e) => saveComment(e)} fullWidth inputProps={{ 'aria-label': 'description', 'width': "100%" }} />
                     <br></br>
+                    <p>{video.comments}</p>
                     <br></br>
-                    <Button variant="contained" onClick={() => saveToFile()} fullWidth color="primary">
+
+                    <Button variant="contained" onClick={() => saveToFile(index)} fullWidth color="primary">
 
                         Save
                     </Button>
-                </div>}
-               <br></br>
+                    <br></br>
+                    <br></br>
+                </div>) : <p>No application response from the user</p>}
+                {/* {props.userRelevantQuestions ? <p>{props.userRelevantQuestions}</p> : null} */}
+                {/* {props.userVideoLink &&
+                    <div>
+                    </div>} */}
+                {/* <br></br>
                 {
 
                     Object.keys(commentData).length > 0 && commentData[props.userId] && commentData[props.userId].map((comment) => {
                         return <div><p>{comment}</p><br></br></div>
                     })
                 }
-                <br></br>
+                <br></br> */}
             </JwModal>
         </div>
     )
@@ -179,7 +208,10 @@ function mapStateToProps(state) {
         isLoginSuccess: state.isLoginSuccess,
         userVideoLink: state.userVideoLink,
         userRelevantQuestions: state.userRelevantQuestions,
-        userId: state.userId
+        userId: state.userId,
+        candidates: state.candidates,
+        application: state.applications,
+        question: state.questions
 
 
     }

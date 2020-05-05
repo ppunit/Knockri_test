@@ -21,6 +21,37 @@ class App extends React.Component {
     if (this.props.history)
       this.props.history.push('/');
   }
+  componentDidMount() {
+    this.getData("http://localhost:4000/candidates", "Candidates")
+    this.getData("http://localhost:4000/applications", "Application")
+    this.getData("http://localhost:4000/questions", "Question")
+  }
+  getData = (url, str) => {
+    let data = []
+    fetch(url, {
+      method: "get",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+
+    })
+      .then(res => {
+
+        return res.json()
+      })
+      .then((response, error) => {
+        data = response
+        console.log(response)
+        this.props.dispatch({ type: str, target: response })
+      })
+      .catch(error => {
+        console.log("Something went wrong " + error);
+      });
+
+
+
+  }
   render() {
 
 
